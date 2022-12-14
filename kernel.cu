@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
+#include <nvtx3/nvToolsExt.h>
+#include <time.h>
 // #include <unistd.h> 
 // #include <sys/time.h>
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
@@ -41,7 +43,8 @@ __global__ void NussinovGlobal(int* d_optGPU, char* d_rna, int curOPTCol, int N)
     //if (blockIdx.y > 0)
     //printf("row:%d, col:%d, blockIdx.y:%d, blockDim.y:%d, threadIdx.y:%d \n", row, col, blockIdx.y, blockDim.y, threadIdx.y);
 
-    if (row < N && col < N) // maybe can try if (row <= col && col < N) and see the correctness, then no need to allocate different size block
+    //if (row < N && col < N) // maybe can try and see the correctness, then no need to allocate different size block
+    if (row <= col && col < N)
     {
         if (row >= col - 4)
         {
@@ -73,12 +76,14 @@ __global__ void NussinovGlobal(int* d_optGPU, char* d_rna, int curOPTCol, int N)
 int main()
 {
 
-    int testcase = 1;
+    nvtxInitialize(0);
+    nvtxMark("Hello world!");
+    int testcase = 3;
     //int len[] = { 1024,2048,4096 };
     //char* s[] = { "rna_1024.txt", "rna_2048.txt", "rna_4096.txt" };
-    int len[] = { 32768 };
-    char* s[] = { "rna_32768.txt" };
-
+    int len[] = {1024, 2048, 4096 ,8192,16384, 32768 };
+    char* s[] = {"rna_1024.txt","rna_2048.txt", "rna_4096.txt", "rna_8192.txt","rna_16384.txt","rna_32768.txt"};
+    clock_t t_cpu_start, t_cpu_end, t_gpu_start, t_gpu_end;
 
     for (int i = 0; i < testcase; i++)
     {
@@ -98,11 +103,32 @@ int main()
 
         //for (int i = 0; i < N + 1; i++) printf("%c", rna[i]);
         printf("Current testing length = %d\n", N);
+        printf("Executing CPU function...\n");
+        nvtxRangePush("Start: CPU_nussinov alogrithm");
+        t_cpu_start = clock();
         Nussinov(rna, N);
+        t_cpu_end = clock();
+        nvtxRangePop();
+        nvtxMark("CPU completed");
+        double time_taken_cpu = (double)(t_cpu_end - t_cpu_start) / CLOCKS_PER_SEC;
+       
+        printf("time taken for CPU: %f\n", time_taken_cpu);
 
+        printf("Executing GPU kernel...\n");
+        nvtxRangePush("Start: GPU_nussinov alogrithm");
+        t_gpu_start = clock();
         cudaError_t cudaStatus = globalNussinovCuda(rna, N);
+        t_gpu_end = clock();
+        nvtxRangePop();
+        nvtxMark("GPU completed");
+        double time_taken_gpu = (double)(t_gpu_end - t_gpu_start) / CLOCKS_PER_SEC;
+       
+        printf("time taken for GPU: %f\n", time_taken_gpu);
         checkCuda(cudaStatus);
         free(rna);
+        printf("End current session\n");
+        printf("\n");
+
     }
 
 
