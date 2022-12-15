@@ -78,11 +78,11 @@ int main()
 
     nvtxInitialize(0);
     nvtxMark("Hello world!");
-    int testcase = 3;
+    int testcase = 6;
     //int len[] = { 1024,2048,4096 };
     //char* s[] = { "rna_1024.txt", "rna_2048.txt", "rna_4096.txt" };
-    int len[] = {1024, 2048, 4096 ,8192,16384, 32768 };
-    char* s[] = {"rna_1024.txt","rna_2048.txt", "rna_4096.txt", "rna_8192.txt","rna_16384.txt","rna_32768.txt"};
+    int len[] = {1024, 2048, 4096 ,8192,16384, 25600 };
+    char* s[] = {"rna_1024.txt","rna_2048.txt", "rna_4096.txt", "rna_8192.txt","rna_16384.txt","rna_25600.txt"};
     clock_t t_cpu_start, t_cpu_end, t_gpu_start, t_gpu_end;
 
     for (int i = 0; i < testcase; i++)
