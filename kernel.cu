@@ -35,15 +35,197 @@ __global__ void fillTheMatrix(int* d_optGPU, int N)
     }
 }
 
+
+
+__global__ void NussinovTiled(int* d_optGPU, char* d_rna, int curOPTCol, int N)
+{                                   // OPT[i][j] needed element
+    __shared__ int tiled_row[1024]; // for OPT[i][t-1] take wrong
+    __shared__ int tiled_col[1024]; // for OPT[t+1][j-1] verify is correct
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = curOPTCol;
+
+    //printf("row:%d, col:%d, blockIdx.y:%d, blockDim.y:%d, threadIdx.y:%d \n", row, col, blockIdx.y, blockDim.y, threadIdx.y);
+
+    if (row <= col && col < N)
+    {
+        for (int sub = 0; sub < col; ++sub) tiled_row[sub] = d_optGPU[row * N + sub];
+
+        for (int sub = row; sub < col && sub < 1024; ++sub) tiled_col[sub] = d_optGPU[sub * N + col - 1];
+        __syncthreads();
+        if (row >= col - 4)
+        {
+            d_optGPU[row * N + col] = 0;
+        }
+        else
+        {
+
+            int exclude = d_optGPU[row * N + col - 1]; // OPT[i][j - 1];
+            int include = 0;
+            // get the value from tiled
+            for (int t = row; t < col - 4; t++)
+            {
+                int result = WatsonPairCheck(t, col, d_rna);
+                if (result == 1)
+                {
+                    int x = t - 1;
+                    if (t - 1 < 0) x = N - 1;
+                    //int pair = 1 + tiled_row[x] + tiled_col[t+1];
+                    int pair = 1 + d_optGPU[row * N + x];
+                    if( t < 1023) pair+= tiled_col[t + 1];
+                    else pair += d_optGPU[(t + 1) * N + col - 1];
+                    //int pair = 1 + OPT[row][t-1] + OPT[t+1][col-1];
+
+
+                    include = MAX(include, pair);
+                }
+
+            }
+            __syncthreads();
+            /*
+            if (row == 0 && col == 37)
+            {
+                for (int z = 0; z < 48; z++)
+                    printf("tile_row[%d]:%d, tile_col[%d]:%d\n", z, tiled_row[z], z, tiled_col[z]);
+                printf("end session\n");
+                // why this will print 10 times
+                printf("the opt_gpu \n");
+                for (int i = 0; i < 48 * 48; i++)
+                {
+                    printf("%d ", d_optGPU[i]);
+                    if (i != 0 && (i + 1) % 48 == 0)
+                    {
+                        printf("\n");
+                    }
+                }
+
+
+            }
+            */
+            // get the result
+            d_optGPU[row * N + col] = MAX(exclude, include);
+
+        }
+    }
+}
+
+
+__global__ void NussinovTiled1(int* d_optGPU, char* d_rna, int curOPTCol, int N)
+{                                   // OPT[i][j] needed element
+    //__shared__ int tiled_row[1024]; // for OPT[i][t-1] take wrong
+    __shared__ int tiled_col[1024]; // for OPT[t+1][j-1] verify is correct
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = curOPTCol;
+
+    //printf("row:%d, col:%d, blockIdx.y:%d, blockDim.y:%d, threadIdx.y:%d \n", row, col, blockIdx.y, blockDim.y, threadIdx.y);
+
+
+    if (row <= col && col < N)
+    {
+        /*
+        for (int sub = 0; sub < col; ++sub)
+        {
+            if (sub > 1024) break;
+            else tiled_row[sub] = d_optGPU[row * N + sub];
+        }
+        */
+
+        //for (int sub = row; sub < col - row; ++sub)
+        //for (int sub = row; sub < col - row; ++sub)
+        //{
+        //    tiled_col[sub] = d_optGPU[sub * N + col - 1];
+           // if (sub - row < 1024)  tiled_col[sub-row] = d_optGPU[sub * N + col - 1];
+           // else break;
+        //}
+        for (int t = row; t < col; t++)
+        {
+            tiled_col[t - row] = d_optGPU[t * N + col - 1];
+            if (row == 0 && col == 10 && t == 1)
+                //printf("t-row:%d, row:%d, t:%d, tiled_col[t - row]:%d, d_optGPU[t * N + col - 1]:%d\n", t - row, row, t, tiled_col[t - row], d_optGPU[t * N + col - 1]);
+                printf("t-row:%d, row:%d, t:%d, tiled_col[t - row]:%d, d_optGPU[t * N + col - 1]:%d\n", t - row, row, t, tiled_col[t - row], d_optGPU[t * N + col - 1]);
+        }
+        __syncthreads();
+        if (row == 0 && col == 10)
+        {
+            printf("%d", tiled_col[1]);
+            //for (int t = row; t < col; t++)
+            //    printf("%d", tiled_col[t-row]);
+            printf("\n");
+
+        }
+       
+        __syncthreads();
+
+        if (row >= col - 4)
+        {
+            d_optGPU[row * N + col] = 0;
+        }
+        else
+        {
+
+            int exclude = d_optGPU[row * N + col - 1]; // OPT[i][j - 1];
+            int include = 0;
+            // get the value from tiled
+            for (int t = row; t < col - 4; t++)
+            {
+                int result = WatsonPairCheck(t, col, d_rna);
+                if (result == 1)
+                {
+                    int x = t - 1;
+                    if (t - 1 < 0) x = N - 1;
+                    //int pair = 1 + tiled_row[x] + tiled_col[t+1];
+                    int pair = 1 + d_optGPU[row * N + x] + tiled_col[t-row + 1];
+                    // 
+                    // 
+                    //int pair = 1 + d_optGPU[row * N + x];
+                    //pair += tiled_col[t + 1];
+                    //if (t-row < 1023) pair += tiled_col[t-row + 1];
+                    //else pair += d_optGPU[(t + 1) * N + col - 1];
+                    
+                    //pair += d_optGPU[(t + 1) * N + col - 1];
+                    
+                   
+                    //int pair = 1 + OPT[row][t-1] + OPT[t+1][col-1];
+
+
+                    include = MAX(include, pair);
+                }
+
+            }
+            //__syncthreads();
+            /*
+            if (row == 0 && col == 37)
+            {
+                for (int z = 0; z < 48; z++)
+                    printf("tile_row[%d]:%d, tile_col[%d]:%d\n", z, tiled_row[z], z, tiled_col[z]);
+                printf("end session\n");
+                // why this will print 10 times
+                printf("the opt_gpu \n");
+                for (int i = 0; i < 48 * 48; i++)
+                {
+                    printf("%d ", d_optGPU[i]);
+                    if (i != 0 && (i + 1) % 48 == 0)
+                    {
+                        printf("\n");
+                    }
+                }
+
+
+            }
+            */
+            // get the result
+            d_optGPU[row * N + col] = MAX(exclude, include);
+
+        }
+    }
+}
 // now change to 1D block & 1D grid to do the parallization
 __global__ void NussinovGlobal(int* d_optGPU, char* d_rna, int curOPTCol, int N)
 {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = curOPTCol;
-    //if (blockIdx.y > 0)
+
     //printf("row:%d, col:%d, blockIdx.y:%d, blockDim.y:%d, threadIdx.y:%d \n", row, col, blockIdx.y, blockDim.y, threadIdx.y);
 
-    //if (row < N && col < N) // maybe can try and see the correctness, then no need to allocate different size block
     if (row <= col && col < N)
     {
         if (row >= col - 4)
@@ -78,11 +260,11 @@ int main()
 
     nvtxInitialize(0);
     nvtxMark("Hello world!");
-    int testcase = 6;
+    int testcase = 4;
     //int len[] = { 1024,2048,4096 };
     //char* s[] = { "rna_1024.txt", "rna_2048.txt", "rna_4096.txt" };
-    int len[] = {1024, 2048, 4096 ,8192,16384, 25600 };
-    char* s[] = {"rna_1024.txt","rna_2048.txt", "rna_4096.txt", "rna_8192.txt","rna_16384.txt","rna_25600.txt"};
+    int len[] = { 48, 128,1024, 2048, 4096 ,8192,16384, 25600 };
+    char* s[] = { "rna_48.txt", "rna_128.txt","rna_1024.txt","rna_2048.txt", "rna_4096.txt", "rna_8192.txt","rna_16384.txt","rna_25600.txt" };
     clock_t t_cpu_start, t_cpu_end, t_gpu_start, t_gpu_end;
 
     for (int i = 0; i < testcase; i++)
@@ -111,7 +293,7 @@ int main()
         nvtxRangePop();
         nvtxMark("CPU completed");
         double time_taken_cpu = (double)(t_cpu_end - t_cpu_start) / CLOCKS_PER_SEC;
-       
+
         printf("time taken for CPU: %f\n", time_taken_cpu);
 
         printf("Executing GPU kernel...\n");
@@ -122,7 +304,7 @@ int main()
         nvtxRangePop();
         nvtxMark("GPU completed");
         double time_taken_gpu = (double)(t_gpu_end - t_gpu_start) / CLOCKS_PER_SEC;
-       
+
         printf("time taken for GPU: %f\n", time_taken_gpu);
         checkCuda(cudaStatus);
         free(rna);
@@ -143,12 +325,6 @@ int main()
     return 0;
 }
 
-/*
-float timedifference_msec(struct timeval t0, struct timeval t1)
-{
-    return (t1.tv_sec - t0.tv_sec) * 1000.0f + (t1.tv_usec - t0.tv_usec) / 1000.0f;
-}
-*/
 
 // reference: https://stackoverflow.com/questions/18315796/use-cpu-function-in-cuda
 __host__ __device__ int WatsonPairCheck(int t, int j, char* RNA)
@@ -170,13 +346,6 @@ void Nussinov(char* RNA, int N)
     int** OPT = (int**)malloc(N * sizeof(int*));
     for (int i = 0; i < N; i++)
         OPT[i] = (int*)malloc(N * sizeof(int));
-
-    // int* OPT[N];
-    // for (int i = 0; i < N; i++)
-    //{
-    //    OPT[i] = (int*)malloc(N * sizeof(int));
-    //}
-
 
 
     // initialize the matrix
@@ -211,10 +380,19 @@ void Nussinov(char* RNA, int N)
                         if (t - 1 < 0) x = N - 1;
                         int pair = 1 + OPT[i][x] + OPT[t + 1][j - 1];
 
+                        
 
                         include = MAX(include, pair);
                     }
                 }
+                if (i == 0 && j == 10)
+                {
+                    for (int i = 0; i < j; i++)
+                        printf("%d", OPT[i][j - 1]);
+                    printf("\n");
+
+                }
+
                 OPT[i][j] = MAX(exclude, include);
             }
         }
@@ -229,7 +407,7 @@ void Nussinov(char* RNA, int N)
     // TODO: print out structure
 
     // print the table
-    //printCPURows(OPT, N, 1);
+   // printCPURows(OPT, N, 48);
 
 
     for (int i = 0; i < N; i++)
@@ -287,20 +465,19 @@ cudaError_t globalNussinovCuda(char* RNA, int N)
         if (numOfBlock <= 1024) blockSize = numOfBlock;
         else blockSize = 1024;
 
-       
+
         gridSize = numOfBlock / 1024 + 1;
         if (numOfBlock % 1024 == 0)
             gridSize--;
-       // printf("numOfBlock:%d, gridSize:%d, blockSize:%d", numOfBlock, gridSize, blockSize);
-      
+        // printf("numOfBlock:%d, gridSize:%d, blockSize:%d", numOfBlock, gridSize, blockSize);
+
         dim3 dimBlock(1, blockSize, 1);
         dim3 dimGrid(1, gridSize, 1);
-        //dim3 dimBlock(1, curOPTCol + 1, 1);
-        // dim3 dimGrid(1, (curOPTCol - 1) / BLOCK_SIZE + 1, 1);
-       // dim3 dimGrid(1, 1, 1);
 
-        //printf("curOPTCol:%d", curOPTCol);
-        NussinovGlobal << <dimGrid, dimBlock >> > (d_optGPU, d_rna, curOPTCol, N);
+
+
+        //NussinovGlobal << <dimGrid, dimBlock >> > (d_optGPU, d_rna, curOPTCol, N);
+        NussinovTiled << <dimGrid, dimBlock >> > (d_optGPU, d_rna, curOPTCol, N);
         cudaStatus = cudaGetLastError();
         checkCuda(cudaStatus);
         cudaStatus = cudaDeviceSynchronize();
@@ -314,7 +491,7 @@ cudaError_t globalNussinovCuda(char* RNA, int N)
 
 
     // printf number of GPU rows
-    //printGPURows(optGPU, N, 1);
+    //printGPURows(optGPU, N, 48);
 
     printf("maximum from GPU: %d\n", optGPU[N - 1]);
 
