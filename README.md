@@ -1,4 +1,4 @@
-# Nussinov algorithm acceleration with CUDA and GPU
+# Nussinov algorithm acceleration with Parallel Computing
 
 ## Overview
 
