@@ -11,8 +11,7 @@
 #include <string.h>
 #include <nvtx3/nvToolsExt.h>
 #include <time.h>
-// #include <unistd.h> 
-// #include <sys/time.h>
+
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define TILED_LEN 4096
 
@@ -115,8 +114,6 @@ __global__ void NussinovTiled(int* d_optGPU, char* d_rna, int curOPTCol, int N)
 }
 
 
-
-
 int main()
 {
 
@@ -125,8 +122,6 @@ int main()
 
     int len[] = { 48, 128,512, 1024, 2048, 4096 ,8192,16384, 25600,32768 };
     char* s[] = { "rna_48.txt", "rna_128.txt","rna_512.txt","rna_1024.txt","rna_2048.txt", "rna_4096.txt", "rna_8192.txt","rna_16384.txt","rna_25600.txt","rna_32768.txt" };
-
-
 
     clock_t t_cpu_start, t_cpu_end, t_gpu_start, t_gpu_end, t_gpu_tiled_start, t_gpu_tiled_end;
 
@@ -147,7 +142,7 @@ int main()
 
 
         printf("Current testing length = %d\n", N);
-        // execute cpu only under 10000 since after that take more than 3hr to execute and cannot make it
+        // execute cpu only under 10000 since after that take more than 3hr to execute, which aws appstream using time cannot make it
         if (N < 10000)    
         {
             printf("Executing CPU function...\n");
@@ -248,8 +243,6 @@ void Nussinov(char* RNA, int N)
                         if (t - 1 < 0) x = N - 1;
                         int pair = 1 + OPT[i][x] + OPT[t + 1][j - 1];
 
-
-
                         include = MAX(include, pair);
                     }
                 }
@@ -263,10 +256,8 @@ void Nussinov(char* RNA, int N)
     // Time the usage
     printf("maximum from CPU: %d\n", OPT[0][N - 1]);
 
-
     // print the table
     // printCPURows(OPT, N, 48);
-
 
     for (int i = 0; i < N; i++)
     {
