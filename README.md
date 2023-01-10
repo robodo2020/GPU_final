@@ -1,10 +1,10 @@
 # Nussinov algorithm acceleration with CUDA and GPU
 
-## Problem Overview
+## Overview
 
 The project would like to use CUDA GPU to accelerate the Nussinov algorithm in a RNA sequence. In a sequence, there are only 4 alphabet inside: {A, C, G, U}. The algorithm tries to find out the maximum number of Watson-Crick pair, which are: {A-U, U-A, C-G, G-C}. However, the RNA sequence can be pretty long and thus takes lots of time to compute. Originally the algorithm takes O(n^3) time complexity to solve the problem with CPU code. In this project, we test the sequence length from 48 to 32768 using CUDA to parallelize the computation and optimize the time complexity to O(n^2).
 
-## Concept / Implement of parallelization & Parallel Pattern
+## Parallelization & Parallel Pattern
 
 The algorithm is related to dynamic programming, which utilized a 2D matrix(OPT) to do the calculation. The dimension of the OPT matrix would be `OPT[N][N]` , where `N` is the length of the RNA.
 
